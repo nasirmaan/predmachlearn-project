@@ -1,0 +1,66 @@
+---
+title: "Fitness Activity Prediction Using Random Forest"
+date: "Wednesday, July 23, 2014"
+output: html_document
+---
+This document briefly describes machine method used to predict fitness activity
+class based on data gathered through Fitbit fitness montoring device. In the 
+following, Method section describes preprocessing, method and prediction process
+and Summary section finally summarizes the entire activity.
+
+### Method
+Original Fitbit training data (given in pml-training.csv) consisted of 19622 observations and 160 variables. Some variables had less than 5% observations. Therefore, we
+decided to drop all those variable which had more than 19000 missing values. Additionally, we do want to use only numerical variables to train our method. That is why, we
+also removed all character variables from training data. Following R code performed
+these two tasks;
+```{r echo=FALSE, warning=FALSE}
+require(caret, warn.conflicts = FALSE, quietly=TRUE)
+library(ggbiplot, warn.conflicts = FALSE, quietly=TRUE)
+library(randomForest, warn.conflicts = FALSE, quietly=TRUE)
+setwd("C:/Dropbox/datasci-jhi/machinelearning/course_project/")
+data <- read.csv("pml-training.csv", stringsAsFactor=F)
+data$classe <- as.factor(data$classe)
+
+excl = vector()
+for (i in 1:159) {
+  if ((class(data[, i]) == "character") | (sum(is.na(data[, i])) > 19000)) {
+    excl = append(excl, i)
+  }
+  if (class(data[, i]) == "integer"){
+    data[, i] = as.numeric(data[, i])
+  }
+}
+data = data[-excl]; ncol = ncol(data)
+```
+Afterward, we set aside 25% data from training set for validation purpose. The
+code is as follows;
+```{r}
+inTrain <- createDataPartition(y=data$classe, p=0.75, list=F)
+trainData <- data[inTrain, ]
+valData <- data[-inTrain, ]
+```
+
+To construct our model based on random forest algorith, we used 20 iterations and 1000
+trees as given below;
+
+```{r cache=TRUE}
+rf <-randomForest(classe~.,data=trainData, mtry=2, ntree=1000, 
+                  keep.forest=TRUE, importance=TRUE)
+```
+Then we validated the model with 25% set aside from training set. The validation confirmed 99% accuracy of resultant model.
+
+```{r}
+pr = predict(rf, testData)
+t = table (obs=testData$classe, predict=pr)
+round(prop.table(t, 1), 4)
+```
+The smaple error was significantly lower than 0.01.
+
+### Summary
+Our random forest based machine learning algorithm is high accurate in prediction
+of Fitness Activity. We were able to predict activity of 20 test cases with 100%
+accuracy.
+
+### Appendix 
+Supported R code is given in pml-model-search.r and pml-final-prediction.r
+
